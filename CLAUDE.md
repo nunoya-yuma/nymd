@@ -2,6 +2,56 @@
 
 このファイルは、Claude Code (claude.ai/code) がこのリポジトリで作業する際のガイダンスを提供します。
 
+## 開発ワークフロー（重要）
+
+**⚠️ 必須ルール: 全ての変更は新しいブランチで実施すること**
+
+1. **作業開始前に必ずブランチを作成**:
+   ```bash
+   git checkout -b feature/機能名
+   # または
+   git checkout -b fix/修正内容
+   ```
+
+2. **開発・テスト・コミット**を実施
+
+3. **リモートにプッシュ**:
+   ```bash
+   git push -u origin ブランチ名
+   ```
+
+4. **mainブランチへのマージ（rebaseを使用）**:
+   ```bash
+   # mainブランチを最新に更新
+   git checkout main
+   git pull origin main
+   
+   # featureブランチをmainにrebase
+   git checkout feature/ブランチ名
+   git rebase main
+   
+   # mainにマージ（fast-forward）
+   git checkout main
+   git merge feature/ブランチ名
+   
+   # リモートにプッシュ
+   git push origin main
+   
+   # 不要になったブランチを削除
+   git branch -d feature/ブランチ名
+   git push origin --delete feature/ブランチ名
+   ```
+
+5. **Pull Requestを使用する場合**:
+   - GitHub上でPull Requestを作成
+   - レビュー後、「Rebase and merge」を選択してマージ
+
+**ブランチ命名規則**:
+- `feature/機能名` - 新機能追加
+- `fix/修正内容` - バグ修正  
+- `refactor/改善内容` - リファクタリング
+- `docs/ドキュメント更新` - ドキュメント修正
+
 ## 開発コマンド
 
 - `npm install` - 依存関係のインストール
