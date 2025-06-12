@@ -89,7 +89,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         .editor-panel {
             flex: 1;
             padding: 16px;
-            overflow-y: auto;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         .preview-panel {
             flex: 1;
@@ -108,6 +110,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             font-family: 'Courier New', monospace;
             font-size: 14px;
             resize: none;
+            overflow-y: auto;
+            flex: 1;
         }
         .preview-content h1, .preview-content h2, .preview-content h3 {
             color: var(--vscode-editor-foreground);
@@ -183,6 +187,38 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             
             preview.innerHTML = html;
         }
+
+        // 同期スクロール機能
+        let isEditorScrolling = false;
+        let isPreviewScrolling = false;
+        
+        const previewPanel = document.querySelector('.preview-panel');
+        
+        // エディタ（textarea）のスクロール同期
+        editor.addEventListener('scroll', () => {
+            if (isPreviewScrolling) return;
+            isEditorScrolling = true;
+            
+            const editorScrollRatio = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
+            const previewScrollTop = editorScrollRatio * (previewPanel.scrollHeight - previewPanel.clientHeight);
+            
+            previewPanel.scrollTop = previewScrollTop;
+            
+            setTimeout(() => { isEditorScrolling = false; }, 100);
+        });
+        
+        // プレビューパネルのスクロール同期
+        previewPanel.addEventListener('scroll', () => {
+            if (isEditorScrolling) return;
+            isPreviewScrolling = true;
+            
+            const previewScrollRatio = previewPanel.scrollTop / (previewPanel.scrollHeight - previewPanel.clientHeight);
+            const editorScrollTop = previewScrollRatio * (editor.scrollHeight - editor.clientHeight);
+            
+            editor.scrollTop = editorScrollTop;
+            
+            setTimeout(() => { isPreviewScrolling = false; }, 100);
+        });
 
         // 初期プレビュー更新
         updatePreview(editor.value);
