@@ -419,10 +419,24 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 newValue = parts.join(replaceText);
                 replacedCount = parts.length - 1;
             } else {
-                // 大文字小文字を区別しない場合（現在は常にfalse）
-                const parts = editor.value.split(searchText);
-                newValue = parts.join(replaceText);
-                replacedCount = parts.length - 1;
+                // 大文字小文字を区別しない場合
+                const originalText = editor.value;
+                const lowerText = originalText.toLowerCase();
+                const lowerSearch = searchText.toLowerCase();
+                
+                replacedCount = 0;
+                newValue = '';
+                let lastIndex = 0;
+                
+                while (true) {
+                    const index = lowerText.indexOf(lowerSearch, lastIndex);
+                    if (index === -1) break;
+                    
+                    newValue += originalText.substring(lastIndex, index) + replaceText;
+                    lastIndex = index + searchText.length;
+                    replacedCount++;
+                }
+                newValue += originalText.substring(lastIndex);
             }
             
             if (replacedCount > 0) {
