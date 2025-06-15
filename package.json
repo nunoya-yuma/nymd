@@ -16,26 +16,23 @@
   "contributes": {
     "commands": [
       {
-        "command": "nymd.openEditor",
-        "title": "Open NYMD Editor",
-        "category": "NYMD"
-      }
-    ],
-    "customEditors": [
-      {
-        "viewType": "nymd.markdownEditor",
-        "displayName": "NYMD Markdown Editor",
-        "selector": [
-          {
-            "filenamePattern": "*.md"
-          }
-        ]
+        "command": "nymd.openPreview",
+        "title": "Open Preview",
+        "category": "NYMD",
+        "icon": "$(open-preview)"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "nymd.openEditor",
+          "command": "nymd.openPreview",
+          "when": "resourceExtname == .md",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "nymd.openPreview",
           "when": "resourceExtname == .md",
           "group": "navigation"
         }

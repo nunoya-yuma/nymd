@@ -1,25 +1,23 @@
 import * as vscode from 'vscode';
-import { MarkdownEditorProvider } from './markdownEditor';
+import { MarkdownPreviewProvider } from './markdownEditor';
 
 export function activate(context: vscode.ExtensionContext) {
-    // カスタムエディタープロバイダーを登録
-    const provider = new MarkdownEditorProvider(context);
+    // プレビュープロバイダーを作成
+    const previewProvider = new MarkdownPreviewProvider(context);
     
-    const providerRegistration = vscode.window.registerCustomEditorProvider(
-        MarkdownEditorProvider.viewType,
-        provider
-    );
-    
-    // コマンドを登録
-    const openEditorCommand = vscode.commands.registerCommand('nymd.openEditor', (uri?: vscode.Uri) => {
-        if (uri) {
-            vscode.commands.executeCommand('vscode.openWith', uri, MarkdownEditorProvider.viewType);
+    // プレビューコマンドを登録
+    const openPreviewCommand = vscode.commands.registerCommand('nymd.openPreview', (uri?: vscode.Uri) => {
+        // アクティブなエディタから URI を取得
+        const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+        
+        if (targetUri && targetUri.fsPath.endsWith('.md')) {
+            previewProvider.openPreview(targetUri);
         } else {
-            vscode.window.showErrorMessage('Please select a markdown file.');
+            vscode.window.showErrorMessage('Please open a markdown file first.');
         }
     });
     
-    context.subscriptions.push(providerRegistration, openEditorCommand);
+    context.subscriptions.push(openPreviewCommand);
 }
 
 export function deactivate() {}
