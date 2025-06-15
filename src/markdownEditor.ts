@@ -44,7 +44,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         });
     }
 
-    private getHtmlForWebview(webview: vscode.Webview, document: vscode.TextDocument): string {
+    private getHtmlForWebview(_webview: vscode.Webview, document: vscode.TextDocument): string {
         const markdownContent = this.markdownToHtml(document.getText());
         
         return `<!DOCTYPE html>
@@ -93,6 +93,26 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             display: flex;
             flex-direction: column;
         }
+        .editor-container {
+            display: flex;
+            flex: 1;
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .line-numbers {
+            background: var(--vscode-editorGutter-background);
+            color: var(--vscode-editorLineNumber-foreground);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 8px 8px 8px 12px;
+            text-align: right;
+            line-height: 1.5;
+            user-select: none;
+            min-width: 40px;
+            overflow: hidden;
+            white-space: pre;
+        }
         .preview-panel {
             flex: 1;
             padding: 16px;
@@ -101,7 +121,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             background: var(--vscode-editor-background);
         }
         textarea {
-            width: 100%;
+            flex: 1;
             height: 100%;
             background: transparent;
             color: var(--vscode-editor-foreground);
@@ -109,9 +129,11 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             outline: none;
             font-family: 'Courier New', monospace;
             font-size: 14px;
+            line-height: 1.5;
             resize: none;
             overflow-y: auto;
-            flex: 1;
+            padding: 8px 12px;
+            margin: 0;
         }
         .preview-content h1, .preview-content h2, .preview-content h3 {
             color: var(--vscode-editor-foreground);
@@ -119,6 +141,77 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         .preview-content p {
             line-height: 1.6;
             color: var(--vscode-editor-foreground);
+        }
+        .search-dialog {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 1000;
+            min-width: 300px;
+        }
+        .search-dialog.show {
+            display: block;
+        }
+        .search-input {
+            width: 100%;
+            padding: 4px 8px;
+            margin-bottom: 8px;
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 2px;
+            font-size: 13px;
+        }
+        .search-buttons {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .search-button {
+            padding: 4px 8px;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .search-button:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+        .replace-section {
+            border-top: 1px solid var(--vscode-panel-border);
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+        .search-options {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .option-button {
+            padding: 4px 6px;
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid var(--vscode-button-border);
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 11px;
+            min-width: 24px;
+            text-align: center;
+        }
+        .option-button:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+        }
+        .option-button.active {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
         }
     </style>
 </head>
@@ -133,10 +226,33 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     </div>
     <div class="content">
         <div class="editor-panel">
-            <textarea id="editor" placeholder="Start typing your Markdown...">${this.escapeHtml(document.getText())}</textarea>
+            <div class="editor-container">
+                <div class="line-numbers" id="line-numbers">1</div>
+                <textarea id="editor" placeholder="Start typing your Markdown...">${this.escapeHtml(document.getText())}</textarea>
+            </div>
         </div>
         <div class="preview-panel">
             <div class="preview-content" id="preview">${markdownContent}</div>
+        </div>
+    </div>
+    
+    <!-- 検索・置換ダイアログ -->
+    <div class="search-dialog" id="search-dialog">
+        <input type="text" class="search-input" id="search-input" placeholder="検索...">
+        <div class="search-options">
+            <button class="option-button" id="case-sensitive-btn" onclick="toggleCaseSensitive()" title="大文字小文字を区別">Aa</button>
+        </div>
+        <div class="search-buttons">
+            <button class="search-button" onclick="findNext()">次を検索</button>
+            <button class="search-button" onclick="findPrevious()">前を検索</button>
+            <button class="search-button" onclick="closeSearch()">閉じる</button>
+        </div>
+        <div class="replace-section">
+            <input type="text" class="search-input" id="replace-input" placeholder="置換...">
+            <div class="search-buttons">
+                <button class="search-button" onclick="replaceNext()">置換</button>
+                <button class="search-button" onclick="replaceAll()">すべて置換</button>
+            </div>
         </div>
     </div>
 
@@ -144,6 +260,187 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
         const vscode = acquireVsCodeApi();
         const editor = document.getElementById('editor');
         const preview = document.getElementById('preview');
+        const lineNumbers = document.getElementById('line-numbers');
+        const searchDialog = document.getElementById('search-dialog');
+        const searchInput = document.getElementById('search-input');
+        const replaceInput = document.getElementById('replace-input');
+        const caseSensitiveBtn = document.getElementById('case-sensitive-btn');
+        
+        let currentSearchIndex = -1;
+        let searchMatches = [];
+        let caseSensitive = false;
+
+        // 行番号を更新する関数
+        function updateLineNumbers() {
+            const lines = editor.value.split('\\n');
+            const lineCount = lines.length;
+            let lineNumbersText = '';
+            for (let i = 1; i <= lineCount; i++) {
+                lineNumbersText += i + '\\n';
+            }
+            lineNumbers.textContent = lineNumbersText.trim();
+        }
+
+        // 検索・置換機能
+        function openSearch() {
+            searchDialog.classList.add('show');
+            searchInput.focus();
+        }
+
+        function toggleCaseSensitive() {
+            caseSensitive = !caseSensitive;
+            if (caseSensitive) {
+                caseSensitiveBtn.classList.add('active');
+            } else {
+                caseSensitiveBtn.classList.remove('active');
+            }
+            // 検索結果をリセット
+            currentSearchIndex = -1;
+            searchMatches = [];
+        }
+
+        function closeSearch() {
+            searchDialog.classList.remove('show');
+            clearSearchHighlight();
+        }
+
+        function findMatches(searchText) {
+            if (!searchText) return [];
+            
+            const text = editor.value;
+            const matches = [];
+            let searchInText, searchForText;
+            
+            if (caseSensitive) {
+                searchInText = text;
+                searchForText = searchText;
+            } else {
+                searchInText = text.toLowerCase();
+                searchForText = searchText.toLowerCase();
+            }
+            
+            let index = 0;
+            while ((index = searchInText.indexOf(searchForText, index)) !== -1) {
+                matches.push({
+                    start: index,
+                    end: index + searchText.length
+                });
+                index += searchForText.length;
+            }
+            
+            return matches;
+        }
+
+        function findNext() {
+            const searchText = searchInput.value;
+            if (!searchText) return;
+            
+            searchMatches = findMatches(searchText);
+            if (searchMatches.length === 0) {
+                alert('見つかりませんでした');
+                return;
+            }
+            
+            currentSearchIndex = (currentSearchIndex + 1) % searchMatches.length;
+            highlightMatch(currentSearchIndex);
+        }
+
+        function findPrevious() {
+            const searchText = searchInput.value;
+            if (!searchText) return;
+            
+            searchMatches = findMatches(searchText);
+            if (searchMatches.length === 0) {
+                alert('見つかりませんでした');
+                return;
+            }
+            
+            currentSearchIndex = currentSearchIndex <= 0 ? searchMatches.length - 1 : currentSearchIndex - 1;
+            highlightMatch(currentSearchIndex);
+        }
+
+        function highlightMatch(matchIndex) {
+            if (matchIndex < 0 || matchIndex >= searchMatches.length) return;
+            
+            const match = searchMatches[matchIndex];
+            editor.focus();
+            editor.setSelectionRange(match.start, match.end);
+        }
+
+        function clearSearchHighlight() {
+            // 選択を解除
+            if (editor.selectionStart !== editor.selectionEnd) {
+                editor.setSelectionRange(editor.selectionStart, editor.selectionStart);
+            }
+        }
+
+        function replaceNext() {
+            const searchText = searchInput.value;
+            const replaceText = replaceInput.value;
+            
+            if (!searchText) return;
+            
+            const selectedText = editor.value.substring(editor.selectionStart, editor.selectionEnd);
+            const textMatches = caseSensitive ? 
+                selectedText === searchText : 
+                selectedText.toLowerCase() === searchText.toLowerCase();
+                
+            if (textMatches) {
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                const newValue = editor.value.substring(0, start) + replaceText + editor.value.substring(end);
+                
+                editor.value = newValue;
+                editor.setSelectionRange(start, start + replaceText.length);
+                
+                // VS Codeドキュメントも更新
+                vscode.postMessage({
+                    type: 'edit',
+                    text: newValue
+                });
+                updatePreview(newValue);
+                updateLineNumbers();
+            }
+            
+            findNext();
+        }
+
+        function replaceAll() {
+            const searchText = searchInput.value;
+            const replaceText = replaceInput.value;
+            
+            if (!searchText) return;
+            
+            let newValue, replacedCount;
+            
+            if (caseSensitive) {
+                // 大文字小文字を区別する場合
+                const parts = editor.value.split(searchText);
+                newValue = parts.join(replaceText);
+                replacedCount = parts.length - 1;
+            } else {
+                // 大文字小文字を区別しない場合（現在は常にfalse）
+                const parts = editor.value.split(searchText);
+                newValue = parts.join(replaceText);
+                replacedCount = parts.length - 1;
+            }
+            
+            if (replacedCount > 0) {
+                editor.value = newValue;
+                
+                // VS Codeドキュメントも更新
+                vscode.postMessage({
+                    type: 'edit',
+                    text: newValue
+                });
+                updatePreview(newValue);
+                updateLineNumbers();
+                
+                alert(replacedCount + '個置換しました');
+            } else {
+                alert('置換対象が見つかりませんでした');
+            }
+        }
 
         // エディタ変更時の処理
         editor.addEventListener('input', () => {
@@ -153,6 +450,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 text: text
             });
             updatePreview(text);
+            updateLineNumbers();
         });
 
         // ツールバーのボタン機能
@@ -199,6 +497,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             if (isPreviewScrolling) return;
             isEditorScrolling = true;
             
+            // 行番号もエディタと同じスクロール位置に同期
+            lineNumbers.scrollTop = editor.scrollTop;
+            
             const editorScrollRatio = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
             const previewScrollTop = editorScrollRatio * (previewPanel.scrollHeight - previewPanel.clientHeight);
             
@@ -220,8 +521,34 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
             setTimeout(() => { isPreviewScrolling = false; }, 100);
         });
 
-        // 初期プレビュー更新
+        // キーボードショートカット
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+F で検索ダイアログを開く
+            if (e.ctrlKey && e.key === 'f') {
+                e.preventDefault();
+                openSearch();
+            }
+            // Escapeで検索ダイアログを閉じる
+            if (e.key === 'Escape') {
+                closeSearch();
+            }
+        });
+
+        // 検索ボックスでのEnterキー処理
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    findPrevious();
+                } else {
+                    findNext();
+                }
+            }
+        });
+
+        // 初期プレビュー更新と行番号更新
         updatePreview(editor.value);
+        updateLineNumbers();
     </script>
 </body>
 </html>`;

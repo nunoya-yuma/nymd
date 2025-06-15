@@ -55,3 +55,4 @@ jspm_packages/
 
 # Claude Code settings
 .claude/
+CLAUDE.local.md
